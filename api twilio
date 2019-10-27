@@ -1,0 +1,25 @@
+codigo api twilio:
+// Install the Java helper library from twilio.com/docs/java/install
+
+import com.twilio.Twilio;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
+
+public class SMS {
+    public static final String USER = "";
+    public static final String NUM="";
+    public static final String NUMERODR="";
+    public static final String HISTORIAL="";
+
+
+    public static void main(String[] args) {
+        Twilio.init(USER, NUM, NUMDR, HISTORIAL);
+        Message message = Message.creator(
+                new com.twilio.type.PhoneNumber("+1"),
+                new com.twilio.type.PhoneNumber("+1"),
+                "Historial, ")
+            .create();
+
+        System.out.println(message.getSid());
+    }
+}
