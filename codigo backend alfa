@@ -1,0 +1,149 @@
+package baldur.sqlite.ejemplo.com.drwatch;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.support.wearable.view.WatchViewStub;
+import android.widget.TextView;
+private static final int REQUEST_OAUTH=1;
+private static final String AUTH_PENDING="auth_state_pending";
+private boolean authInProgess= false;
+private GoogleApiClient mApiClient;
+
+public class MainActivity extends AppCompatActivity implements OnDataPointListener,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener {
+
+    private TextView mTextView;
+
+
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        final WatchViewStub stub = (WatchViewStub) findViewById(R.id.watch_view_stub);
+        stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
+
+            public void onLayoutInflated(WatchViewStub stub) {
+                mTextView = (TextView) stub.findViewById(R.id.text);
+            }
+        });
+        if (Bundle savedInstanceState != null){
+            authInProgress=savedInstanceState.getBoolean(AUTH_PENDING);
+        }
+        mApiClient=new GoogleApiClient.Builder(this)
+                .addApi(Fitness.SENSORS_API)
+                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ_WRITE))
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+    }
+
+    public void onConnected(Bundle bundle){
+        DataSourcesRequest dataSourceRequest = new DataSourcesRequest.Builder()
+                .setDataTypes( DataType.TYPE_HEART_RATE_BPM )
+                .setDataSourceTypes( DataSource.TYPE_RAW )
+                .build();
+
+        ResultCallback<DataSourcesResult> dataSourcesResultCallback = new ResultCallback<DataSourcesResult>() {
+
+            public void onResult(DataSourcesResult dataSourcesResult) {
+                for( DataSource dataSource : dataSourcesResult.getDataSources() ) {
+                    if( DataType.TYPE_HEART_RATE_BPM.equals( dataSource.getDataType() ) ) {
+                        registerFitnessDataListener(dataSource, DataType.TYPE_HEART_RATE_BPM);
+                    }
+                }
+            }
+        };
+
+        Fitness.SensorsApi.findDataSources(mApiClient, dataSourceRequest)
+                .setResultCallback(dataSourcesResultCallback);
+    }
+    public void onConnectionSuspended(int i){
+    }
+    public void onConnectionFailed(ConnectionResult connectionResult){
+        if(!authInProgress){
+            try{
+                authInProgress=true;
+                connectionResult.startResolutionForResult(MainActivity.this , REQUEST_OAUTH);
+            }catch(IntentSender.SendIntentException e ) {}
+        }
+        else {
+            Log.e( "GoogleFit", "authInProgress" );
+        }
+    }
+
+    public void onDataPoint(DataPoint datapoint){
+        for( final Field field : dataPoint.getDataType().getFields() ) {
+            final Value value = dataPoint.getValue( field );
+            runOnUiThread(new Runnable() {
+
+                public void run() {
+
+                    Toast.makeText(getApplicationContext(), " pulso: " + value, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+    }
+
+    protected void  onStart(){
+        super.onStart();
+        mApiClient.connect();
+    }
+
+
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if( requestCode == REQUEST_OAUTH ) {
+            authInProgress = false;
+            if( resultCode == RESULT_OK ) {
+                if( !mApiClient.isConnecting() && !mApiClient.isConnected() ) {
+                    mApiClient.connect();
+                }
+            } else if( resultCode == RESULT_CANCELED ) {
+                Log.e( "GoogleFit", "RESULT_CANCELED" );
+            }
+        } else {
+            Log.e("GoogleFit", "requestCode NOT request_oauth");
+        }
+    }
+
+
+    private void registerFitnessDataListener(DataSource dataSource, DataType dataType) {
+
+        SensorRequest request = new SensorRequest.Builder()
+                .setDataSource( dataSource )
+                .setDataType( dataType )
+                .setSamplingRate( 3, TimeUnit.SECONDS )
+                .build();
+
+        Fitness.SensorsApi.add( mApiClient, request, this )
+                .setResultCallback(new ResultCallback<Status>() {
+
+                    public void onResult(Status status) {
+                        if (status.isSuccess()) {
+                            Log.e( "GoogleFit", "SensorApi successfully added" );
+                        }
+                    }
+                });
+    }
+
+    protected void onStop() {
+        super.onStop();
+
+        Fitness.SensorsApi.remove( mApiClient, this )
+                .setResultCallback(new ResultCallback<Status>() {
+
+                    public void onResult(Status status) {
+                        if (status.isSuccess()) {
+                            mApiClient.disconnect();
+                        }
+                    }
+                });
+    }
+
+
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(AUTH_PENDING, authInProgress);
+    }
+}
