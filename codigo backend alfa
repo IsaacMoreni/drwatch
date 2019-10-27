@@ -1,3 +1,4 @@
+codigo api google fit para funcionalidad del app en el smart watch
 package baldur.sqlite.ejemplo.com.drwatch;
 
 import android.app.Activity;
