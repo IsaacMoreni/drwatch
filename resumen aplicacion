@@ -1,0 +1,4 @@
+dr watch:
+  aplicacion pensada para poder monitorear signos vitales y con estos compararlo con un catalogo de signovitales presentados en ciertas enfermedades, esto se hace
+  con el fin de  poder diagnosticar o dar una probibilidad  si podria padecer de ciertas enfermedades, tambien se mandaran alertas con clasificacion verde, amarilla y roja dependiendo de la señal de los signos vitales
+  estas alertas se mandaran a familiares, amigos y doctor de cabezera, en el caso de alerta roja se mandara alerta al 911
